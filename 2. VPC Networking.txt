@@ -1,0 +1,160 @@
+Task 1. Explore the default network
+View the subnets
+The default network has a subnet in each Google Cloud region.
+gcloud compute networks subnets list --filter=default
+
+View the routes
+gcloud compute routes list
+
+
+View the firewall rules
+These firewall rules allow ICMP, RDP, and SSH ingress traffic from anywhere (0.0.0.0/0) and all TCP, UDP, and ICMP traffic within the network (10.128.0.0/9).
+gcloud compute firewall-rules list
+
+Delete the Firewall rules
+gcloud compute firewall-rules delete default-allow-icmp --quiet
+gcloud compute firewall-rules delete default-allow-internal --quiet
+gcloud compute firewall-rules delete default-allow-rdp --quiet
+gcloud compute firewall-rules delete default-allow-ssh --quiet
+
+Delete the default network
+gcloud compute networks delete default
+
+Try to create a VM instance
+gcloud compute instances create vm-instance --zone=us-central1-a
+
+Task 2. Create an auto mode network
+Create an auto mode VPC network with firewall rules
+gcloud compute networks create default --subnet-mode=auto
+gcloud compute firewall-rules create default-allow-icmp --network default --allow=icmp --source-ranges=0.0.0.0/0 --priority=65534
+gcloud compute firewall-rules create default-allow-ssh --network default --allow=tcp:22 --source-ranges=0.0.0.0/0 --priority=65534
+gcloud compute firewall-rules create default-allow-rdp --network default --allow=tcp:3389 --source-ranges=0.0.0.0/0 --priority=65534
+gcloud compute firewall-rules create default-allow-internal --network default --allow=tcp:0-65535,udp:0-65535,icmp --source-ranges=10.128.0.0/9 --priority=65534
+
+Create a VM instance in us-central1
+3. Specify the following, and leave the remaining settings as their defaults:
+Property 	Value (type value or select option as specified)
+Name 	mynet-us-vm
+Region 	us-central1
+Zone 	us-central1-c
+Machine type 	n1-standard-1 (1 vCPU, 3.75 GB memory)
+-----------------------------------
+gcloud compute instances create mynet-us-vm --zone=us-central1-c --machine-type=n1-standard-1
+
+5. Verify that the Internal IP for the new instance was assigned from the IP address range for the subnet in us-central1 (10.128.0.0/20).
+gcloud compute instances list --filter=us-central1-c
+
+
+Create a VM instance in europe-west1
+2. Specify the following, and leave the remaining settings as their defaults:
+Property 	Value (type value or select option as specified)
+Name 	mynet-eu-vm
+Region 	europe-west1
+Zone 	europe-west1-c
+Machine type 	n1-standard-1 (1 vCPU, 3.75 GB memory)
+--------------------------------------------
+gcloud compute instances create mynet-eu-vm --zone=europe-west1-c --machine-type=n1-standard-1
+
+4. Verify that the Internal IP for the new instance was assigned from the IP address range for the subnet in europe-west1 (10.132.0.0/20).
+gcloud compute instances list --filter=europe-west1-c
+
+Verify connectivity for the VM instances
+gcloud beta compute ssh mynet-us-vm --zone=us-central1-c
+ping -c 3 10.132.0.2
+ping -c 3 mynet-eu-vm
+ping -c 3 34.76.49.10
+
+Convert the network to a custom mode network
+gcloud compute networks update default --switch-to-custom-subnet-mode
+
+Task 3. Create custom mode networks
+Create the managementnet network
+
+
+
+3. For Name, type managementnet
+
+4. For Subnet creation mode, click Custom.
+
+5. Specify the following, and leave the remaining settings as their defaults:
+Property 	Value (type value or select option as specified)
+Name 	managementsubnet-us
+Region 	us-central1
+IP address range 	10.130.0.0/20
+-----------------------------------
+gcloud compute networks create managementnet --subnet-mode=custom
+gcloud compute networks subnets create managementsubnet-us --network=managementnet --region=us-central1 --range=10.130.0.0/20
+
+Create the privatenet network
+3. To create the privatenet network, run the following command:
+gcloud compute networks create privatenet --subnet-mode=custom
+
+4. To create the privatesubnet-us subnet, run the following command:
+gcloud compute networks subnets create privatesubnet-us --network=privatenet --region=us-central1 --range=172.16.0.0/24
+
+5. To create the privatesubnet-eu subnet, run the following command:
+gcloud compute networks subnets create privatesubnet-eu --network=privatenet --region=europe-west1 --range=172.20.0.0/20
+
+6. To list the available VPC networks, run the following command:
+gcloud compute networks list
+
+7. To list the available VPC subnets (sorted by VPC network), run the following command:
+gcloud compute networks subnets list --sort-by=NETWORK
+
+Create the firewall rules for managementnet
+Specify the following, and leave the remaining settings as their defaults:
+Property 	Value (type value or select option as specified)
+Name 	managementnet-allow-icmp-ssh-rdp
+Network 	managementnet
+Targets 	All instances in the network
+Source filter 	IP Ranges
+Source IP ranges 	0.0.0.0/0
+Protocols and ports 	Specified protocols and ports
+Select tcp and specify ports 22 and 3389.
+Select Other protocols and specify icmp protocol.
+------------------------------
+gcloud compute firewall-rules create managementnet-allow-icmp-ssh-rdp --direction=INGRESS --priority=1000 --network=managementnet --action=ALLOW --rules=icmp,tcp:22,tcp:3389 --source-ranges=0.0.0.0/0
+
+Create the firewall rules for privatenet
+gcloud compute firewall-rules create privatenet-allow-icmp-ssh-rdp --direction=INGRESS --priority=1000 --network=privatenet --action=ALLOW --rules=icmp,tcp:22,tcp:3389 --source-ranges=0.0.0.0/0
+
+3. To list all the firewall rules (sorted by VPC network), run the following command:
+gcloud compute firewall-rules list --sort-by=NETWORK
+
+
+Create the managementnet-us-vm instance
+3. Specify the following, and leave the remaining settings as their defaults:
+Property 	Value (type value or select option as specified)
+Name 	managementnet-us-vm
+Region 	us-central1
+Zone 	us-central1-c
+Machine type 	f1-micro (1 vCPU, 614 MB memory)
+4. Click Management, security, disks, networking, sole tenancy.
+5. Click Networking.
+6. For Network interfaces, click the pencil icon to edit.
+7. Specify the following, and leave the remaining settings as their defaults:
+Property 	Value (type value or select option as specified)
+Network 	managementnet
+Subnetwork 	managementsubnet-us
+--------------------------------------
+gcloud compute instances create managementnet-us-vm --zone=us-central1-c --machine-type=f1-micro --subnet=managementsubnet-us
+
+Create the privatenet-us-vm instance
+gcloud compute instances create privatenet-us-vm --zone=us-central1-c --machine-type=f1-micro --subnet=privatesubnet-us
+
+3. To list all the VM instances (sorted by zone), run the following command:
+gcloud compute instances list --sort-by=ZONE
+
+Task 4. Explore the connectivity across networks
+Ping the external IP addresses of the VM instances to determine whether you can reach the instances from the public internet.
+gcloud beta compute ssh mynet-us-vm --zone=us-central1-c
+ping -c 3 34.76.49.10
+ping -c 3 35.188.148.203
+ping -c 3 34.121.170.241
+
+Ping the internal IP addresses
+Ping the internal IP addresses of the VM instances to determine whether you can reach the instances from within a VPC network.
+gcloud beta compute ssh mynet-us-vm --zone=us-central1-c
+ping -c 3 10.132.0.2
+ping -c 3 10.130.0.2
+ping -c 3 172.16.0.2
