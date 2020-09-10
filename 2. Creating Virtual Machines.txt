@@ -1,0 +1,63 @@
+Task 1: Create a utility virtual machine
+Create a VM
+7. For Machine type, click n1-standard-4 (4 vCPUs, 15 GB memory). How did the cost change?
+8. For Machine type, click n1-standard-1 (1 vCPUs, 3.75 GB memory).
+9. Click Management, security, disks, networking, sole tenancy.
+10. Click Networking.
+11. For Network interfaces, click the Edit icon (Edit).
+12. Select None for External IP.
+13. Click Done.
+gcloud compute instances create vm-instance --zone=us-central1-c --machine-type=n1-standard-1 --no-address --no-shielded-vtpm --no-shielded-integrity-monitoring
+
+Explore the VM details
+gcloud compute instances describe vm-instance --zone=us-central1-c --format=json
+
+
+Task 2: Create a Windows virtual machine
+Create a VM
+3. Specify the following, and leave the remaining settings as their defaults:
+
+Property 	Value (type value or select option as specified)
+Name 	Type a name for your VM
+Region 	europe-west2
+Zone 	europe-west2-a
+Machine type 	n1-standard-2(2 vCPUs, 7.5 GB memory)
+Boot disk 	Change
+Public Images > Operating system 	Windows Server
+Version 	Windows Server 2016 Datacenter Core
+Boot disk type 	SSD persistent disk
+Size (GB) 	100
+4. Click Select.
+5. For Firewall, enable Allow HTTP traffic and Allow HTTPS traffic.
+6. Click Create.
+--------------------------------
+gcloud compute instances create windows-vm --zone=europe-west2-a --machine-type=n1-standard-2 --tags=http-server,https-server --image=windows-server-2016-dc-core-v20200813 --image-project=windows-cloud --boot-disk-size=100GB --boot-disk-type=pd-ssd --boot-disk-device-name=windows-vm
+gcloud compute firewall-rules create default-allow-http --direction=INGRESS --action=ALLOW --rules=tcp:80 --source-ranges=0.0.0.0/0 --target-tags=http-server
+gcloud compute firewall-rules create default-allow-https --direction=INGRESS --action=ALLOW --rules=tcp:443 --source-ranges=0.0.0.0/0 --target-tags=https-server
+
+Task 3: Create a custom virtual machine
+Create a VM
+3. Specify the following, and leave the remaining settings as their defaults:
+Property 	Value (type value or select option as specified)
+Name 	Type a name for your VM
+Region 	us-west1
+Zone 	us-west1-b
+Machine type 	Custom
+Cores 	6 vCPU
+Memory 	32 GB
+4. Click Create.
+gcloud compute instances create custom-vm --zone=us-west1-b –machine-type=custom-6-32768 --no-shielded-vtpm --no-shielded-integrity-monitoring
+
+Connect via SSH to your custom VM
+1. For the custom VM you just created, click SSH.
+gcloud beta compute ssh custom-vm --zone=us-west1-b
+2. To see information about unused and used memory and swap space on your custom VM, run the following command:
+free
+3. To see details about the RAM installed on your VM, run the following command:
+sudo dmidecode -t 17
+4. To verify the number of processors, run the following command:
+nproc
+5. To see details about the CPUs installed on your VM, run the following command:
+lscpu
+6. To exit the SSH terminal, run the following command:
+exit
